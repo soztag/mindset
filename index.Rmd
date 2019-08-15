@@ -43,6 +43,156 @@ source("setup.R")
 **Early Draft; Don't Cite or Circulate**
 </div>
 
+## Buzz
+
+
+### Terms
+
+```{r}
+phrases <- c("mindset", "change management")
+```
+
+
+### Google Books
+
+```{r books}
+library(ngramr)
+ngram2 <- function(phrases, corpus) {
+  ng <- ngram(
+    phrases = phrases,
+    corpus = corpus,
+    year_start = 1900,
+    year_end = 2019,
+    case_ins = TRUE
+  )
+  ng$Phrase <- as.character(tolower(ng$Phrase))
+  ng$Corpus <- as.character(tolower(ng$Corpus))
+  ng
+}
+corpora <- c(english = "eng_2012", german = "ger_2012")
+combs <- expand.grid(phrases = phrases, corpus = corpora, stringsAsFactors = FALSE)
+ng <- purrr::pmap_dfr(
+  .l = combs,
+  .f = ngram2
+)
+library(dplyr)
+ng <- ng %>% 
+  group_by(Year, Phrase, Corpus) %>% 
+  summarise(Frequency = sum(Frequency))
+ng
+library(ggplot2)
+ggplot(
+  data = ng,
+  mapping = aes(x = Year, y = Frequency, colour = Phrase, linetype = Corpus)
+) +
+geom_line()
+```
+
+
+## Google Trends 
+
+```{r, fig.cap="Google Trends von FGM Begriffen (LOESSS)"}
+trends <- gtrendsR::gtrends(
+  keyword = c("growth", "growth mindset"), 
+  time = "all", 
+  low_search_volume = TRUE,
+  geo = "DE"
+)
+library(ggplot2)
+ggplot(
+  data = trends$interest_over_time,
+  mapping = aes(
+    x = as.Date(date),
+    y = hits,
+    color = keyword
+  )
+) +
+  geom_smooth(formula = y ~ x, method = "loess", se = TRUE, na.rm = TRUE, span = 0.2) +
+  ylim(0, 100) +  # because google trends are indexed to 100
+  guides(color = guide_legend(ncol = 2))
+  # theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Die Abbildung gibt die weltweiten Google-Anfragen zu den aufgelisteten Konzepten wieder, indexiert auf einen (rohen) Höchstwert von 100.
+Die Rohdaten sind allerdings recht verrausscht, daher wird hier eine erheblich geglättete Form präsentiert, in der der Höchstwert nicht mehr enthalten ist.
+
+Wie man in der o.s. Abbildung sieht, werden die englischen FGM-Begriffe durchgehend ab 2007 verwendet, die deutschen Termini ab etwa 2012, und die französischen erst seit 2016.
+
+Fast alle (berichtete) Suchaktivität entspringt den USA, Deutschland und Frankreich, darunter vor allem die Hauptstädte Berlin und Frankreich.
+Schwache Suchaktivitäten sind in den Daten nicht enthalten.
+
+
+```{r fig.cap="Google Trends von FGM Begriffen im Vergleich (LOESSS)", warning = FALSE}
+other_trends <- gtrendsR::gtrends(
+  keyword = c("scrum master", "data scientist", "social media manager", "growth hacker"),
+  time = "all",
+  low_search_volume = TRUE
+)
+
+# weirdly, above sometimes includes characters ">1" as hits, so this needs to be fixed
+other_trends$interest_over_time$hits <- as.integer(other_trends$interest_over_time$hits)
+other_trends$interest_over_time$hits[is.na(other_trends$interest_over_time$hits)] <- 0
+
+df <- dplyr::bind_rows(
+  list(
+    fgm = fgm_gtrends$interest_over_time, 
+    others = other_trends$interest_over_time
+  ), 
+  .id = "group"
+) %>% 
+  as_tibble()
+
+
+# now because these two datasets are separately indexed to 100, we need to download the two highest together, to find the right multiplier
+highest <- group_by(df, group) %>% 
+  filter(hits == max(hits)) %>% 
+  select(keyword) %>% 
+  deframe()
+multiplier <- gtrendsR::gtrends(
+  keyword = highest,
+  time = "all",
+  low_search_volume = TRUE
+) %>% 
+  extract2("interest_over_time") %>% 
+  group_by(keyword) %>% 
+  filter(hits == max(hits)) %>% 
+  select(hits) %>% 
+  deframe() %>% 
+  as.integer() %>% 
+  min() %>% 
+  divide_by(100)
+
+df <- mutate(
+  .data = df,
+  hits = if_else(
+    condition = group == "fgm",
+    true = hits * multiplier,
+    false = hits
+  )
+)
+
+g <- ggplot(
+  data = df,
+  mapping = aes(
+    x = date,
+    y = hits,
+    color = keyword,
+    linetype = group
+  )
+) +
+  geom_smooth(formula = y ~ x, method = "loess", se = TRUE, na.rm = TRUE, span = 0.3) +
+  ylim(0, 100) +  # because google trends are indexed to 100
+  scale_x_date(date_breaks = "1 year") + 
+  guides(color = guide_legend(ncol = 2)) + 
+  theme(
+    legend.position = "bottom", 
+    axis.text.x = element_text(angle = 90, hjust = 1)
+  )
+g
+```
+
+
+
 ```{r import_via_praw, eval=FALSE, include=FALSE}
 library(RedditExtractoR)
 urls <- RedditExtractoR::reddit_urls(search_terms = "'bullshit jobs'", cn_threshold = 1) %>% 
