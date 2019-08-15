@@ -94,34 +94,41 @@ Spezifischere n-Grams wie etwa "growth mindset" (nach @Dweck2017) kommen leider 
 ## Google Trends 
 
 ```{r, fig.cap="Google Trends von FGM Begriffen (LOESSS)"}
-trends <- gtrendsR::gtrends(
-  keyword = c("growth", "growth mindset"), 
-  time = "all", 
-  low_search_volume = TRUE,
-  geo = "DE"
-)
-library(ggplot2)
-ggplot(
-  data = trends$interest_over_time,
-  mapping = aes(
-    x = as.Date(date),
-    y = hits,
-    color = keyword
+geos <- c(Welt = NA, Deutschland = "DE", USA = "US")
+gtrends2 <- function(geo, subset = "interest_over_time") {
+  trends <- gtrendsR::gtrends(
+    keyword = c("mindset", "growth mindset", "fixed mindset", "agile mindset", "digital mindset"),
+    time = "all",
+    geo = geo,
+    low_search_volume = FALSE
   )
-) +
-  geom_smooth(formula = y ~ x, method = "loess", se = TRUE, na.rm = TRUE, span = 0.2) +
-  ylim(0, 100) +  # because google trends are indexed to 100
-  guides(color = guide_legend(ncol = 2))
-  # theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, hjust = 1))
+  trends <- trends[[subset]]
+  trends <- tibble::as_tibble(trends)
+  trends$hits <- as.integer(trends$hits)
+  trends$hits[is.na(trends$hits)] <- 0
+  trends
+}
+interest_over_time <- purrr::map_dfr(
+  .x = geos,
+  .f = gtrends2,
+  subset = "interest_over_time",
+  .id = "browser_geo"
+)
+ggplot(data = interest_over_time, mapping = aes(x = date, y = hits, color = keyword)) + 
+  geom_smooth(formula = y ~ x, method = "loess", se = TRUE, na.rm = TRUE, span = 0.2) + 
+  facet_wrap(~browser_geo, ncol = 1) +
+  scale_y_sqrt(limits = c(0, 100)) +
+  ylab("Relative Häufigkei, Indiziert auf 100") +
+  labs(colour = "Suchanfrage") +
+  ggtitle(label = "Suchanfragen auf Google (Quadratisch)", subtitle = "Ort nach Browser Geolocation")
 ```
 
 Die Abbildung gibt die weltweiten Google-Anfragen zu den aufgelisteten Konzepten wieder, indexiert auf einen (rohen) Höchstwert von 100.
-Die Rohdaten sind allerdings recht verrausscht, daher wird hier eine erheblich geglättete Form präsentiert, in der der Höchstwert nicht mehr enthalten ist.
+Die Rohdaten sind allerdings recht verrausscht, daher wird hier eine erheblich geglättete Form präsentiert (LOESS), in der der Höchstwert nicht mehr enthalten ist.
 
-Wie man in der o.s. Abbildung sieht, werden die englischen FGM-Begriffe durchgehend ab 2007 verwendet, die deutschen Termini ab etwa 2012, und die französischen erst seit 2016.
-
-Fast alle (berichtete) Suchaktivität entspringt den USA, Deutschland und Frankreich, darunter vor allem die Hauptstädte Berlin und Frankreich.
-Schwache Suchaktivitäten sind in den Daten nicht enthalten.
+Wie man in der o.s. Abbildung sieht, wird Mindset im Kontext von Personalmanagement sowohl in den USA, als auch Deutschland und im Rest der Welt etwa seit 2012 verstärkt als Suchbegriff verwendet.
+Die Unterkonzepte wie "agile Mindset" und "digital Mindset" scheinen vor allem in Deutschland gesucht zu werden, was aber möglicherweise ein Artefakt der Indizierung ist: 
+Da "Mindset" insgesamt in Deutschland sehr viel weniger verwendet wird, erscheint das Wachstum der Unterkonzepte relativ stärker.
 
 
 ```{r fig.cap="Google Trends von FGM Begriffen im Vergleich (LOESSS)", warning = FALSE}
