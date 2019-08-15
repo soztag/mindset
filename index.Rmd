@@ -46,13 +46,6 @@ source("setup.R")
 ## Buzz
 
 
-### Terms
-
-```{r}
-phrases <- c("mindset", "change management")
-```
-
-
 ### Google Books
 
 ```{r books}
@@ -61,15 +54,17 @@ ngram2 <- function(phrases, corpus) {
   ng <- ngram(
     phrases = phrases,
     corpus = corpus,
-    year_start = 1900,
+    year_start = 1945,
     year_end = 2019,
-    case_ins = TRUE
+    case_ins = TRUE,
+    smoothing = 0
   )
   ng$Phrase <- as.character(tolower(ng$Phrase))
   ng$Corpus <- as.character(tolower(ng$Corpus))
   ng
 }
-corpora <- c(english = "eng_2012", german = "ger_2012")
+corpora <- c(german = "ger_2012", english = "eng_2012")
+phrases <- c("mindset")
 combs <- expand.grid(phrases = phrases, corpus = corpora, stringsAsFactors = FALSE)
 ng <- purrr::pmap_dfr(
   .l = combs,
@@ -79,14 +74,21 @@ library(dplyr)
 ng <- ng %>% 
   group_by(Year, Phrase, Corpus) %>% 
   summarise(Frequency = sum(Frequency))
-ng
 library(ggplot2)
 ggplot(
   data = ng,
   mapping = aes(x = Year, y = Frequency, colour = Phrase, linetype = Corpus)
 ) +
-geom_line()
+  geom_smooth(formula = y ~ x, method = "loess", se = TRUE, na.rm = TRUE, span = 0.2) + 
+  xlab(lab = "Jahr") + ylab(label = "Häufigkeit") +
+  scale_linetype_discrete(labels = c("Englisch", "Deutsch")) + 
+  labs(linetype = "Korpus", subtitle = "Foo") + labs(colour = "Term") +
+  ggtitle(label = "'Mindset' in Büchern", subtitle = "Unigrams aus Google Books 2012 Korpora (1945-2010, LOESS)")
 ```
+
+Der Begriff des "Mindsets" wird in in den letzten Jahrzehnten zunehmenden in gedruckten Werken verwandt, beginnend in englischen Veröffentlichungen in den 1980er Jahren, in deutschsprachigen Büchern dann ab den 2000er Jahren.
+Abgebildet sind hier die relativen Häufigkeiten der Unigramme in den jeweiligen Korpora.
+Spezifischere n-Grams wie etwa "growth mindset" (nach @Dweck2017) kommen leider in den zur Verfügung stehenden Korpora bis 2010 nicht vor.
 
 
 ## Google Trends 
