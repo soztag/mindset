@@ -14,7 +14,9 @@ Language: en
 LazyData: true
 Imports: 
     ngramr (>= 1.5.0),
-    gtrendsR (>= 1.4.3)
-Remotes:  
+    gtrendsR (>= 1.4.3),
+    tidygraph,
+    ggraph
+Remotes: 
     seancarmody/ngramr,
     PMassicotte/gtrendsR
