@@ -13,6 +13,13 @@ Encoding: UTF-8
 Language: en
 LazyData: true
 Imports: 
+    bibtex,
+    bookdown,
+    rmarkdown,
+    printr,
+    tidyverse,
+    tidytext,
+    scales,
     ngramr (>= 1.5.0),
     gtrendsR (>= 1.4.3),
     tidygraph,

@@ -11,7 +11,7 @@ navbar:
   - icon: fa-github
     href: https://github.com/soztag/mindset
 output:
-  html_document:
+  bookdown::html_document2:
     theme: cosmo
     toc: yes
     toc_depth: 3
@@ -20,4 +20,5 @@ output:
     fig_caption: yes
     lib_dir: site_libs
     self_contained: no
+    number_sections: no
 output_dir: _site
