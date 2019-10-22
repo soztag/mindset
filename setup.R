@@ -1,12 +1,10 @@
 # dependencies ====
-library(knitr)
-library(rmarkdown)
 library(printr)
 library(tidyverse)
 library(magrittr)
 library(tidytext)
 library(scales)
-library(dplyr)
+library(ggraph)
 
 # knitr setup ====
 knitr::opts_chunk$set(
