@@ -1,6 +1,19 @@
 name: Mindset
 navbar:
   title: Mindset
+  left:
+  - icon: fa-html5
+    text: HTML
+    href: index.html
+  - icon: fa-file-pdf
+    text: PDF
+    href: index.pdf
+  - icon: fa-file-word
+    text: Word
+    href: index.docx
+  - icon: fa-file-image
+    text: Plots
+    href: index_files/
   right:
   - icon: fa-university
     menu:
