@@ -12,8 +12,7 @@ knitr::opts_chunk$set(
   cache = TRUE,
   echo = FALSE,
   message = FALSE,
-  out.width = '100%',
-  eval = FALSE
+  out.width = '100%'
 )
 options(digits = 2)  # display only 2 digits in knitr output
 options(scipen = 999)

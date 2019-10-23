@@ -17,7 +17,8 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 bibliography: 
   - SOZTAG-EXPL2019.bib
   - packages.bib 
-nocite: "`r paste0('@R-', names(knitr::write_bib(x = remotes::local_package_deps(), file = 'packages.bib')), collapse = ', ')`"
+nocite: |
+  "`r paste0('@R-', names(knitr::write_bib(x = remotes::local_package_deps(), file = 'packages.bib')), collapse = ', ')`"
 editor_options: 
   chunk_output_type: console
 ---
@@ -36,8 +37,9 @@ Google Books stellt für die 2012er Korpora n-Gramme bereit, also die die Häufi
 Damit lässt sich auch die Verbreitung von *einzelnen* Wörtern in Büchern messen.
 
 Die unten stehende Abbildung \@ref(fig:books) zeigt die Verwendung des Begriffs "mindset" im englischen und deutschen Korpus. 
+Die Rohdaten sind recht verrausscht, daher wird hier ein locally estimated scatterplot smoothing [LOESS nach @Cleveland1979] zur Glättung verwendet.
 
-```{r books, fig.cap="Google Books Unigramme", eval=TRUE}
+```{r books, fig.cap="Google Books Unigramme"}
 ngram2 <- function(phrases, corpus) {
   ng <- ngramr::ngram(
     phrases = phrases,
@@ -53,7 +55,11 @@ ngram2 <- function(phrases, corpus) {
 }
 corpora <- c(german = "ger_2012", english = "eng_2012")
 phrases <- c("mindset")
-combs <- expand.grid(phrases = phrases, corpus = corpora, stringsAsFactors = FALSE)
+combs <- expand.grid(
+  phrases = phrases, 
+  corpus = corpora, 
+  stringsAsFactors = FALSE
+)
 ng <- purrr::pmap_dfr(
   .l = combs,
   .f = ngram2
@@ -65,13 +71,22 @@ ggplot(
   data = ng,
   mapping = aes(x = Year, y = Frequency, colour = Phrase, linetype = Corpus)
 ) +
-  geom_smooth(formula = y ~ x, method = "loess", se = TRUE, na.rm = TRUE, span = 0.2) + 
+  geom_smooth(
+    formula = y ~ x, 
+    method = "loess", 
+    se = TRUE, 
+    na.rm = TRUE, 
+    span = 0.2
+  ) + 
   xlab(lab = "Jahr") + ylab(label = "Relative Häufigkeit von allen Unigrammen") +
   scale_linetype_discrete(labels = c("Englisch", "Deutsch")) + 
   labs(linetype = "Korpus", subtitle = "Foo") + 
   theme(legend.position = "bottom") +
   guides(color = FALSE) +
-  ggtitle(label = "'Mindset' in Büchern", subtitle = "Unigrams aus Google Books 2012 Korpora (1945-2010, LOESS)")
+  ggtitle(
+    label = "'Mindset' in Büchern", 
+    subtitle = "Unigrams aus Google Books 2012 Korpora (1945-2010, LOESS)"
+  )
 ```
 
 Der Begriff des "Mindsets" wird in in den letzten Jahrzehnten zunehmenden in gedruckten Werken verwandt, beginnend in englischen Veröffentlichungen in den 1980er Jahren, in deutschsprachigen Büchern dann ab den 2000er Jahren.
@@ -90,11 +105,27 @@ Außerdem werden die einzelnen Suchanfragen mittels eines proprietären Themenmo
 Die Suchhäufigkeiten sind zu 100 auf das jeweils häufigste Suchthema an einem Tag indiziert und können daher *nicht* zwischen verschiedenen Abfragen verglichen werden.
 Die Daten werden hier von der Google Trends API mit dem *gtrendsR* Package heruntergeladen [@R-gtrendsR].
 
-```{r trends, fig.cap="Google Trends von Mindset Begriffen (LOESSS)", eval=TRUE, fig.height=9}
+
+## Gesuchte Themen
+
+```{r gtrends_vars}
 geos <- c(Welt = NA, Deutschland = "DE", USA = "US")
+```
+
+
+```{r gtrends_download, eval=FALSE}
+# rerunning this would change results and requires google api access, so this is rarely done
+
+# search topics
 gtrends2 <- function(geo, subset = "related_queries") {
   trends <- gtrendsR::gtrends(
-    keyword = c("mindset", "growth mindset", "fixed mindset", "agile* mindset", "digital mindset"),
+    keyword = c(
+      "mindset", 
+      "growth mindset", 
+      "fixed mindset", 
+      "agile* mindset", 
+      "digital mindset"
+    ),
     time = "all",
     geo = geo,
     low_search_volume = FALSE
@@ -112,90 +143,113 @@ gtrends2 <- function(geo, subset = "related_queries") {
   }
   trends
 }
-if (FALSE) {
-  # rerunning this would change results and require google auth
-  interest_over_time <- map_dfr(
-    .x = geos,
-    .f = gtrends2,
-    subset = "interest_over_time",
-    .id = "browser_geo"
-  )
-  readr::write_rds(x = interest_over_time, path = "interest_over_time.rds")
-}
-interest_over_time <- readr::read_rds("interest_over_time.rds")
 
+map_dfr(
+  .x = geos,
+  .f = gtrends2,
+  subset = "interest_over_time",
+  .id = "browser_geo"
+) %>% 
+readr::write_rds(path = "interest_over_time.rds")
+
+# related terms
+purrr::map_dfr(
+  .x = geos,
+  .f = gtrends2,
+  subset = "related_queries",
+  .id = "browser_geo"
+) %>% 
+readr::write_rds(path = "related_queries.rds")
+```
+
+```{r search_topics, fig.cap="Google Trends von Mindset Begriffen (LOESSS)", fig.height=9}
+interest_over_time <- readr::read_rds("interest_over_time.rds")
 ggplot(
   data = interest_over_time, 
   mapping = aes(x = date, y = hits, color = keyword)
 ) + 
-  geom_smooth(formula = y ~ x, method = "loess", se = TRUE, na.rm = TRUE, span = 0.2) + 
+  geom_smooth(
+    formula = y ~ x, 
+    method = "loess", 
+    se = TRUE, 
+    na.rm = TRUE, 
+    span = 0.2
+  ) + 
   facet_wrap(~browser_geo, ncol = 1) +
   scale_y_sqrt(limits = c(0, 100)) +
   ylab("Relative Häufigkeit, Indiziert auf 100") +
   labs(colour = "Suchanfrage") +
-  ggtitle(label = "Suchanfragen auf Google (Quadratisch)", subtitle = "Ort nach Browser Geolocation") +
+  ggtitle(
+    label = "Suchanfragen auf Google (Quadratisch)"
+    , subtitle = "Ort nach Browser Geolocation"
+  ) +
   theme(legend.position = "bottom")
 ```
 
 Die Abbildung gibt die weltweiten Google-Anfragen zu den aufgelisteten Konzepten wieder, indiziert auf einen (rohen) Höchstwert von 100.
-Die Rohdaten sind allerdings recht verrausscht, daher wird hier ein locally estimated scatterplot smoothing [LOESS nach @Cleveland1979] zur Glättung verwendet.
-Die Höchstwerte sind u.U. nicht mehr enthalten.
+In den ebenfalls LOESS-geglätteten Daten sind die Höchstwerte u.U. nicht mehr enthalten.
 
 Wie man in der o.s. Abbildung sieht, wird Mindset im Kontext von Personalmanagement sowohl in den USA, als auch Deutschland und im Rest der Welt etwa seit 2012 verstärkt als Suchbegriff verwendet.
 Die Unterkonzepte wie "agile Mindset" und "digital Mindset" scheinen vor allem in Deutschland gesucht zu werden, was aber möglicherweise ein Artefakt der Indizierung ist: 
 Da "Mindset" insgesamt in Deutschland sehr viel weniger verwendet wird, erscheint das Wachstum der Unterkonzepte relativ stärker.
 
-```{r fig.cap="Google Trends Related Queries Weltweit"}
-related_queries <- purrr::map_dfr(
-  .x = NA,
-  .f = gtrends2,
-  subset = "related_queries",
-  .id = "browser_geo"
-)
 
-df <- select(.data = related_queries, value, keyword, subject)
-graph <- igraph::graph.data.frame(d = df, directed = FALSE)
-graph <- tidygraph::as_tbl_graph(graph) %>% 
-  mutate(Centrality = tidygraph::centrality_degree(mode = 'in', weights = subject, normalized = TRUE))
-
-ggraph(graph = graph) +
-  geom_edge_link(mapping = aes(edge_width = subject, alpha = 0.5)) +
-  geom_node_label(mapping = aes(label = name, size = Centrality), repel = FALSE) +
-  theme_void() +
-  labs(edge_width = "Relative Häufigkeit von Anfragen") +
-  guides(edge_alpha = FALSE) +
-  theme(legend.position = "bottom") +
-  ggtitle(label = "Verwandte Suchanfragen auf Google (Weltweit)", subtitle = "Ungerichteter, Partieller Graph")
-```
-
-```{r fig.cap="Google Trends Related Queries (aus Deutschland)"}
-related_queries <- purrr::map_dfr(
-  .x = "DE",
-  .f = gtrends2,
-  subset = "related_queries",
-  .id = "browser_geo"
-)
-library(ggraph)
-library(tidygraph)
-library(igraph)
-
-df <- dplyr::select(.data = related_queries, value, keyword, subject)
-graph <- graph.data.frame(d = df, directed = FALSE)
-graph <- as_tbl_graph(graph) %>% 
-  mutate(Centrality = centrality_degree(mode = 'in', weights = subject, normalized = TRUE))
-
-ggraph(graph = graph) +
-  geom_edge_link(mapping = aes(edge_width = subject, alpha = 0.5)) +
-  geom_node_label(mapping = aes(label = name, size = Centrality), repel = FALSE) +
-  theme_void() +
-  labs(edge_width = "Relative Häufigkeit von Anfragen") +
-  guides(edge_alpha = FALSE) +
-  theme(legend.position = "bottom") +
-  ggtitle(label = "Verwandte Suchanfragen auf Google (Deutschland)", subtitle = "Ungerichteter, Partieller Graph")
-```
+## Verwandte Suchanfragen
 
 Ebenfalls instruktiv sind die verwandten Suchanfragen auf Google.
 Google Nutzer die (beispielsweise) nach "Mindset" gesucht haben, suchten auch nach dieseren anderen Begriffen.
+
+```{r plot_related_terms}
+df2graph <- function(df, browser_geo = geos["Welt"]) {
+  df <- dplyr::filter(.data = df, browser_geo == browser_geo) %>% 
+    dplyr::select(value, keyword, subject)
+  graph <- igraph::graph.data.frame(d = df, directed = FALSE)
+  graph <- tidygraph::as_tbl_graph(graph) %>% 
+    tidygraph::mutate(
+      Centrality = tidygraph::centrality_degree(
+        mode = 'in', 
+        weights = subject, 
+        normalized = TRUE
+      )
+    )
+  graph
+}
+
+graph2plot <- function(graph, browser_geo = geos["Welt"]) {
+  ggraph::ggraph(graph = graph) +
+    ggraph::geom_edge_link(
+      mapping = ggplot2::aes(edge_width = subject, alpha = 0.5)
+    ) +
+    ggraph::geom_node_label(
+      mapping = ggplot2::aes(label = name, size = Centrality),
+      repel = FALSE
+    ) + 
+    ggplot2::theme_void() +
+    ggplot2::labs(edge_width = "Relative Häufigkeit von Anfragen") +
+    ggplot2::guides(edge_alpha = FALSE) +
+    ggplot2::theme(legend.position = "bottom") +
+    ggplot2::ggtitle(
+      label = glue::glue("Verwandte Suchanfragen auf Google ({browser_geo})"), 
+      subtitle = "Ungerichteter, Partieller Graph"
+    )
+}
+
+df2plot <- function(df, browser_geo = geos["Welt"]) {
+  df2graph(df = df, browser_geo = browser_geo) %>% 
+    graph2plot(browser_geo = browser_geo)
+}
+```
+
+```{r related_terms_world, fig.cap="Google Trends Related Queries Weltweit", eval=TRUE}
+readr::read_rds("related_queries.rds") %>% 
+  df2plot()
+```
+
+```{r related_terms_germany, fig.cap="Google Trends Related Queries (aus Deutschland)"}
+readr::read_rds("related_queries.rds") %>% 
+  df2plot(browser_geo = geos["Deutschland"])
+```
+
 Bei den Nutzern aus Deutschland zeigt sich aufgrund der spärlichen Datenlage nur ein übersichtliches Assoziationsfeld: 
 Die Suchbegriffe "Mindset", "Agile Mindset", "Growth Mindset", "Fixed Mindset" und "Digital Mindset" sind schwach miteinander assoziert, aber sonst mit wenigen anderen Konzepten.
 
@@ -205,4 +259,3 @@ Es dominieren aber Anfragen hinsichtlich der ursprünglichen Literatur von Dweck
 
 
 # Bibliografie
-
