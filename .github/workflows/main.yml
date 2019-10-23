@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@master
       - name: Install dependencies
         run: |
-          Rscript -e "remotes::install_deps(dependencies = TRUE)"
+          Rscript -e "remotes::install_deps(dependencies = TRUE, repos = c('https://demo.rstudiopm.com/all/__linux__/bionic/1840', getOption('repos')))"
       - name: Render Website
         run: |
           Rscript render.R
