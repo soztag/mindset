@@ -17,7 +17,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 bibliography: 
   - SOZTAG-EXPL2019.bib
   - packages.bib 
-nocite: "`r paste0('@R-', remotes::local_package_deps(), collapse = ', ')`"
+nocite: "`r paste0('@R-', names(knitr::write_bib(x = remotes::local_package_deps(), file = 'packages.bib')), collapse = ', ')`"
 editor_options: 
   chunk_output_type: console
 ---
@@ -205,11 +205,4 @@ Es dominieren aber Anfragen hinsichtlich der ursprünglichen Literatur von Dweck
 
 
 # Bibliografie
-
-```{r, echo = FALSE, include=FALSE, eval = TRUE}
-knitr::write_bib(
-  x = remotes::local_package_deps(), 
-  file = "packages.bib"
-)
-```
 
