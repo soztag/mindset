@@ -108,24 +108,24 @@ Die Daten werden hier von der Google Trends API mit dem *gtrendsR* Package herun
 
 ## Gesuchte Themen
 
-```{r gtrends_vars}
+```{r gtrends-vars}
+keywords <- c(
+  "mindset", 
+  "growth mindset", 
+  "fixed mindset", 
+  "agile* mindset", 
+  "digital mindset"
+)
 geos <- c(Welt = NA, Deutschland = "DE", USA = "US")
 ```
 
-
-```{r gtrends_download, eval=FALSE}
+```{r gtrends-download, eval=FALSE}
 # rerunning this would change results and requires google api access, so this is rarely done
 
 # search topics
 gtrends2 <- function(geo, subset = "related_queries") {
   trends <- gtrendsR::gtrends(
-    keyword = c(
-      "mindset", 
-      "growth mindset", 
-      "fixed mindset", 
-      "agile* mindset", 
-      "digital mindset"
-    ),
+    keyword = keywords,
     time = "all",
     geo = geo,
     low_search_volume = FALSE
@@ -162,7 +162,7 @@ purrr::map_dfr(
 readr::write_rds(path = "related_queries.rds")
 ```
 
-```{r search_topics, fig.cap="Google Trends von Mindset Begriffen (LOESSS)", fig.height=9}
+```{r topics, fig.cap="Google Trends von Mindset Begriffen (LOESSS)"}
 interest_over_time <- readr::read_rds("interest_over_time.rds")
 ggplot(
   data = interest_over_time, 
@@ -196,12 +196,21 @@ Da "Mindset" insgesamt in Deutschland sehr viel weniger verwendet wird, erschein
 
 ## Verwandte Suchanfragen
 
-Ebenfalls instruktiv sind die verwandten Suchanfragen auf Google.
-Google Nutzer die (beispielsweise) nach "Mindset" gesucht haben, suchten auch nach dieseren anderen Begriffen.
+Google Trends veröffentlicht zu einem Suchthema auch verwandte Suchanfragen. 
+Google Nutzer, die (beispielsweise) nach "Mindset" gesucht haben, suchten auch nach dieseren anderen Begriffen.
+Die genaue Definition von verwandten Suchanfragen ist nicht öffentlich.
+
+Hier dargestellt sind die verwandten Suchanfragen von `r glue::glue_collapse(x = keywords, sep = ", ", last = " und ")`.
+Bei diesen Daten handelt es sich um einen ungerichteten, partiellen Graphen:
+Die ursprünglichen Suchthemen können jeweils mit allen anderen Suchthemen, sowie deren verwandten Suchanfragen assoziert sein.
+Zu jeden der (ursprünglichen und verwandten) Suchanfragen ist die Zentralität [des Grades nach etwa @Freeman1977] errechnet.
+Da Assoziationen *zwischen* den verwandten Suchanfragen zwar denkbar, nicht aber abgefragt sind, ist die resultierende Zentralität der ursprünglichen Suchbegriffe in gewisser Hinsicht ein Artefakt der Datenerhebung.
+Die Zentralität der Suchbegriffe im unten stehenden Graph in der Größe der Knoten (= Nodes) wiedergegeben, sowie im Layout des Netzwerks.
+Die Dicke der Kanten (= Edges) reflektiert die auf 100 indizierte relative Häufigkeit der verwandten Anfragen.
 
 ```{r plot_related_terms}
-df2graph <- function(df, browser_geo = geos["Welt"]) {
-  df <- dplyr::filter(.data = df, browser_geo == browser_geo) %>% 
+df2graph <- function(df, geo) {
+  df <- dplyr::filter(.data = df, browser_geo == !!geo) %>% 
     dplyr::select(value, keyword, subject)
   graph <- igraph::graph.data.frame(d = df, directed = FALSE)
   graph <- tidygraph::as_tbl_graph(graph) %>% 
@@ -215,7 +224,7 @@ df2graph <- function(df, browser_geo = geos["Welt"]) {
   graph
 }
 
-graph2plot <- function(graph, browser_geo = geos["Welt"]) {
+graph2plot <- function(graph, geo) {
   ggraph::ggraph(graph = graph) +
     ggraph::geom_edge_link(
       mapping = ggplot2::aes(edge_width = subject, alpha = 0.5)
@@ -226,34 +235,35 @@ graph2plot <- function(graph, browser_geo = geos["Welt"]) {
     ) + 
     ggplot2::theme_void() +
     ggplot2::labs(edge_width = "Relative Häufigkeit von Anfragen") +
+    ggplot2::labs(size = "Zentralität (Grad)") +
     ggplot2::guides(edge_alpha = FALSE) +
     ggplot2::theme(legend.position = "bottom") +
     ggplot2::ggtitle(
-      label = glue::glue("Verwandte Suchanfragen auf Google ({browser_geo})"), 
+      label = glue::glue("Verwandte Suchanfragen auf Google ({geo})"), 
       subtitle = "Ungerichteter, Partieller Graph"
     )
 }
 
-df2plot <- function(df, browser_geo = geos["Welt"]) {
-  df2graph(df = df, browser_geo = browser_geo) %>% 
-    graph2plot(browser_geo = browser_geo)
+df2plot <- function(df, geo = "Welt") {
+  df2graph(df = df, geo = geo) %>% 
+    graph2plot(geo = geo)
 }
 ```
 
-```{r related_terms_world, fig.cap="Google Trends Related Queries Weltweit", eval=TRUE}
+```{r related-germany, fig.cap="Google Trends Related Queries (aus Deutschland)"}
+readr::read_rds("related_queries.rds") %>% 
+  df2plot(geo = "Deutschland")
+```
+
+Bei den Nutzern aus Deutschland zeigt sich in Abbildung \@ref(fig:related-germany) aufgrund der spärlichen Datenlage nur ein übersichtliches Assoziationsfeld: 
+Die Suchbegriffe `r glue::glue_collapse(x = keywords, sep = ", ", last = " und ")` sind schwach miteinander assoziert, aber sonst mit wenigen anderen Konzepten.
+
+```{r related-world, fig.cap="Google Trends Related Queries Weltweit"}
 readr::read_rds("related_queries.rds") %>% 
   df2plot()
 ```
 
-```{r related_terms_germany, fig.cap="Google Trends Related Queries (aus Deutschland)"}
-readr::read_rds("related_queries.rds") %>% 
-  df2plot(browser_geo = geos["Deutschland"])
-```
-
-Bei den Nutzern aus Deutschland zeigt sich aufgrund der spärlichen Datenlage nur ein übersichtliches Assoziationsfeld: 
-Die Suchbegriffe "Mindset", "Agile Mindset", "Growth Mindset", "Fixed Mindset" und "Digital Mindset" sind schwach miteinander assoziert, aber sonst mit wenigen anderen Konzepten.
-
-Weltweit, hier mutmaßlich vor allem aus englischprachigen Ländern, zeigen sich umfangreichere Beziehungen.
+Weltweit, hier vor allem aus englischprachigen Ländern, zeigen sich in Abbildung \@ref(fig:related-world) umfangreichere Beziehungen.
 Die ausgewählten Suchbegriffe sind stark untereinander assoziert, sowie mit verwandten Begriffen.
 Es dominieren aber Anfragen hinsichtlich der ursprünglichen Literatur von Dweck.
 
