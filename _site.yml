@@ -34,5 +34,5 @@ output:
     lib_dir: site_libs
     self_contained: no
     number_sections: no
-    dev: svglite
+    dev: svg
 output_dir: _site

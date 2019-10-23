@@ -23,8 +23,7 @@ Imports:
     ngramr (>= 1.5.0),
     gtrendsR (>= 1.4.3),
     tidygraph,
-    ggraph,
-    svglite
+    ggraph
 Remotes: 
     seancarmody/ngramr,
     PMassicotte/gtrendsR
