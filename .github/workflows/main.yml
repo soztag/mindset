@@ -15,7 +15,7 @@ jobs:
           Rscript -e "remotes::install_deps(dependencies = TRUE)"
       - name: Render Website
         run: |
-          Rscript -e "rmarkdown::render_site(encoding = 'UTF-8')"
+          Rscript render.R
       - name: Deploy Website
         if: github.ref == 'refs/heads/master'
         uses: maxheld83/rsync@v0.1.1
