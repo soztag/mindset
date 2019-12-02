@@ -15,7 +15,6 @@ LazyData: true
 Imports: 
     bibtex,
     bookdown,
-    rmarkdown,
     printr,
     tidyverse,
     tidytext,
